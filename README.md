@@ -29,4 +29,3 @@ This is a **Personal Finance Tracker** application built using **Spring Boot**, 
 - **Java 17 or higher** installed on your local machine.
 - **Maven** for building the project (or Gradle, if you're using it).
 - **PostgreSQL** installed and running for database usage.
-- 
