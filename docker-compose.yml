@@ -1,45 +1,44 @@
 services:
-  # Database (use if your backend expects Postgres; if it uses H2, it will ignore this)
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: financetracker
-      POSTGRES_USER: finance
-      POSTGRES_PASSWORD: finance
+      POSTGRES_DB: financedb          # <-- change this
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: appsecret
+    ports:
+      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U finance -d financetracker"]
+      test: ["CMD-SHELL", "pg_isready -U appuser -d financedb"]
       interval: 5s
       timeout: 3s
-      retries: 30
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+      retries: 10
+    networks: [app-net]
 
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
     depends_on:
       db:
         condition: service_healthy
-    environment:
-      # adjust if your app uses different keys or profiles
-      SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/financetracker
-      SPRING_DATASOURCE_USERNAME: finance
-      SPRING_DATASOURCE_PASSWORD: finance
-      # Example Hibernate setting (remove if you manage schema another way)
-      # SPRING_JPA_HIBERNATE_DDL_AUTO: update
-    expose:
-      - "8080"        # reachable from frontend via service name "backend"
+    ports:
+      - "8081:8080"   # <-- publish backend to host:8081
+    networks: [app-net]
 
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_started
     ports:
-      - "8080:80"     # open http://localhost:8080
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks: [app-net]
 
-volumes:
-  pgdata:
+networks:
+  app-net:

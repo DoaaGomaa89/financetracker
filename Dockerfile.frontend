@@ -1,20 +1,13 @@
-# ---------- build ----------
+# ---------- Build React ----------
 FROM node:18-alpine AS build
 WORKDIR /app
 COPY frontend/package*.json ./
-RUN npm ci --no-audit --no-fund
+RUN npm ci
 COPY frontend/ ./
-
-# Build (works for Angular/React/Vite). If your script is not "build", change it.
 RUN npm run build
 
-# ---------- runtime ----------
+# ---------- Serve with nginx ----------
 FROM nginx:1.25-alpine
-# Copy build output: try Vite/Angular "dist" first, else CRA "build"
-# If your app builds to a named subfolder (e.g., dist/financetracker),
-# this wildcard will still pick it up.
-COPY --from=build /app/dist* /usr/share/nginx/html
-COPY --from=build /app/build  /usr/share/nginx/html
-# Custom nginx to proxy /api => backend
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/build /usr/share/nginx/html
+# nginx conf is bind-mounted by compose as /etc/nginx/conf.d/default.conf
 EXPOSE 80

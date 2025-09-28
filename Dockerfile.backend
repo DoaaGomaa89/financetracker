@@ -1,15 +1,19 @@
-# ---------- build ----------
+# ---------- Build the Spring Boot jar ----------
 FROM maven:3.9-eclipse-temurin-21 AS build
-WORKDIR /app
-COPY backend/pom.xml ./pom.xml
-RUN --mount=type=cache,target=/root/.m2 mvn -q -B -DskipTests dependency:go-offline
-COPY backend/src ./src
-RUN --mount=type=cache,target=/root/.m2 mvn -q -B -DskipTests package
+WORKDIR /build
 
-# ---------- run ----------
-FROM eclipse-temurin:21-jre-alpine
+# cache deps first
+COPY backend/pom.xml .
+RUN mvn -q -DskipTests dependency:go-offline
+
+# compile
+COPY backend/src ./src
+RUN mvn -q -DskipTests package
+
+# ---------- Run the jar ----------
+FROM eclipse-temurin:21-jre
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
-ENV JAVA_OPTS=""
+COPY --from=build /build/target/*.jar /app/app.jar
 EXPOSE 8080
-ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar /app/app.jar"]
+ENV JAVA_OPTS="-Xms256m -Xmx512m"
+ENTRYPOINT ["sh","-lc","java $JAVA_OPTS -jar /app/app.jar"]
